@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Audio abspielen</title>
+<style>
+  :root{
+    --bg:#0b0e14;
+    --ink:#edede8;
+    --muted:#7d8597;
+    --amber:#ffb020;
+    --amber-dim:#5a4011;
+    --err:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #141925 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2.5rem;
+    padding:2rem;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* equalizer — the signature element */
+  .eq{
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    height:64px;
+  }
+  .eq span{
+    width:7px;
+    height:14px;
+    border-radius:4px;
+    background:var(--amber-dim);
+    transition:background .2s;
+  }
+  body.playing .eq span{
+    background:var(--amber);
+    animation:bounce 1s ease-in-out infinite;
+  }
+  .eq span:nth-child(1){animation-delay:-.8s}
+  .eq span:nth-child(2){animation-delay:-.4s}
+  .eq span:nth-child(3){animation-delay:-.1s}
+  .eq span:nth-child(4){animation-delay:-.6s}
+  .eq span:nth-child(5){animation-delay:-.3s}
+  @keyframes bounce{
+    0%,100%{height:14px}
+    50%{height:60px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    body.playing .eq span{animation:none;height:38px}
+  }
+
+  /* play / pause button */
+  button.play{
+    width:128px;height:128px;
+    border-radius:50%;
+    border:2px solid var(--amber);
+    background:rgba(255,176,32,.08);
+    color:var(--amber);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s ease, background .2s;
+  }
+  button.play:active{transform:scale(.94)}
+  button.play:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+  button.play svg{width:46px;height:46px;fill:currentColor}
+  .icon-pause{display:none}
+  body.playing .icon-play{display:none}
+  body.playing .icon-pause{display:block}
+
+  .label{
+    font-size:.82rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--muted);
+    min-height:1.2em;
+    text-align:center;
+  }
+  .label.error{color:var(--err);text-transform:none;letter-spacing:0;font-size:.95rem}
+</style>
+</head>
+<body>
+  <div class="eq" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <button class="play" id="btn" aria-label="Abspielen">
+    <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    <svg class="icon-pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+  </button>
+
+  <p class="label" id="label">Tippen zum Abspielen</p>
+
+  <audio id="audio"></audio>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const file = params.get('a');           // z.B. play.html?a=audio1.mp3
+  const audio = document.getElementById('audio');
+  const btn   = document.getElementById('btn');
+  const label = document.getElementById('label');
+
+  if(!file){
+    label.textContent = 'Kein Audio angegeben. URL: …/play.html?a=DATEINAME.mp3';
+    label.classList.add('error');
+    btn.disabled = true;
+    btn.style.opacity = .4;
+  } else {
+    audio.src = file;
+
+    audio.addEventListener('play',  () => { document.body.classList.add('playing'); btn.setAttribute('aria-label','Pause'); });
+    audio.addEventListener('pause', () => { document.body.classList.remove('playing'); btn.setAttribute('aria-label','Abspielen'); });
+    audio.addEventListener('ended', () => { label.textContent = 'Nochmal abspielen'; });
+    audio.addEventListener('error', () => {
+      label.textContent = 'Datei „' + file + '" nicht gefunden.';
+      label.classList.add('error');
+    });
+
+    btn.addEventListener('click', () => {
+      if(audio.paused){ audio.play(); } else { audio.pause(); }
+    });
+
+    // Autoplay versuchen — klappt es nicht (Mobile blockiert Ton), bleibt der Button.
+    audio.play().then(() => {
+      label.textContent = '';
+    }).catch(() => {
+      label.textContent = 'Tippen zum Abspielen';
+    });
+  }
+</script>
+</body>
+</html>
