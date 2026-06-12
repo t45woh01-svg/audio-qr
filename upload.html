@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Audio hochladen — Audio-QR</title>
+<style>
+:root {
+  --bg:       #0b0e14;
+  --surface:  #141925;
+  --border:   #252e42;
+  --ink:      #edede8;
+  --muted:    #7d8597;
+  --amber:    #ffb020;
+  --amber-bg: rgba(255,176,32,.10);
+  --green:    #4ade80;
+  --red:      #ff6b6b;
+  --r:        12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;padding:2rem 1rem 5rem;
+  background-image:radial-gradient(120% 80% at 50% 0%,#141d2e 0%,var(--bg) 55%);
+}
+.wrap{max-width:480px;margin:0 auto}
+
+/* ── header ── */
+.hdr{display:flex;align-items:center;gap:.75rem;margin-bottom:2.5rem}
+.hdr-icon{font-size:1.8rem;line-height:1}
+.hdr h1{font-size:1.35rem;font-weight:700;letter-spacing:-.01em}
+.hdr p{font-size:.82rem;color:var(--muted);margin-top:.15rem}
+
+/* ── card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1rem}
+
+/* ── form ── */
+.field{margin-bottom:1.25rem}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+.field input{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;
+  color:var(--ink);font-size:.95rem;padding:.65rem .9rem;outline:none;
+  transition:border-color .15s;font-family:inherit;
+}
+.field input:focus{border-color:var(--amber)}
+.field .hint{font-size:.76rem;color:var(--muted);margin-top:.4rem;line-height:1.5}
+.field .hint a{color:var(--amber)}
+
+/* ── buttons ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  border:none;border-radius:8px;cursor:pointer;font-size:.92rem;
+  font-family:inherit;font-weight:600;padding:.7rem 1.35rem;
+  transition:opacity .15s,transform .1s;
+}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--amber);color:#120d00}
+.btn-ghost{background:var(--border);color:var(--ink)}
+.btn-full{width:100%}
+
+/* ── drop zone ── */
+.zone{
+  border:2px dashed var(--border);border-radius:var(--r);
+  padding:2.75rem 1rem;text-align:center;cursor:pointer;
+  transition:border-color .2s,background .2s;position:relative;
+  margin-bottom:1rem;
+}
+.zone:hover,.zone.over{border-color:var(--amber);background:var(--amber-bg)}
+.zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.zone .z-icon{font-size:2.2rem;margin-bottom:.6rem;pointer-events:none}
+.zone .z-label{font-size:.95rem;pointer-events:none}
+.zone .z-label strong{color:var(--amber)}
+.zone .z-hint{font-size:.78rem;color:var(--muted);margin-top:.35rem;pointer-events:none}
+
+/* ── progress ── */
+.prog-wrap{background:var(--border);border-radius:99px;height:3px;overflow:hidden;margin:.75rem 0}
+.prog-bar{background:var(--amber);height:100%;border-radius:99px;width:0%;transition:width .25s}
+
+/* ── status ── */
+.status{font-size:.85rem;padding:.6rem .9rem;border-radius:8px;margin:.5rem 0;display:flex;align-items:center;gap:.6rem}
+.status-uploading{background:var(--amber-bg);color:var(--amber)}
+.status-ok{background:rgba(74,222,128,.1);color:var(--green)}
+.status-err{background:rgba(255,107,107,.1);color:var(--red)}
+
+/* ── QR card ── */
+.qr-card{
+  background:var(--surface);border:1.5px solid var(--amber);border-radius:var(--r);
+  padding:1.75rem;text-align:center;margin-bottom:1rem;
+}
+.qr-card .qr-name{font-weight:700;font-size:1rem;margin-bottom:1.25rem;word-break:break-all}
+.qr-box{background:#fff;padding:12px;border-radius:10px;display:inline-block;margin-bottom:1.25rem}
+.qr-url{font-size:.72rem;color:var(--muted);word-break:break-all;margin-bottom:1.25rem;font-family:ui-monospace,monospace}
+.qr-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+
+/* ── section title ── */
+.sec{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:2rem 0 .85rem}
+
+/* ── file list ── */
+.flist{display:flex;flex-direction:column;gap:.6rem}
+.fitem{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.75rem 1rem;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;
+}
+.fitem .fname{flex:1;font-size:.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem .fbtn{padding:.35rem .7rem;font-size:.78rem;border-radius:6px;white-space:nowrap}
+
+/* ── share URL box ── */
+.url-box{
+  background:var(--bg);border:1.5px solid var(--amber);border-radius:8px;
+  padding:.75rem 1rem;font-size:.75rem;word-break:break-all;
+  font-family:ui-monospace,monospace;color:var(--amber);margin:.75rem 0 1rem;
+}
+
+/* ── pin screen ── */
+.pin-screen{
+  min-height:60vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1.25rem;text-align:center;
+}
+.pin-screen h2{font-size:1.25rem;font-weight:700}
+.pin-screen p{color:var(--muted);font-size:.9rem}
+.pin-input{
+  text-align:center;font-size:2.2rem;letter-spacing:.5em;
+  width:11rem;margin:0 auto;padding:.5rem .75rem !important;
+}
+
+/* ── spinner ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{
+  display:inline-block;width:16px;height:16px;border-radius:50%;flex-shrink:0;
+  border:2px solid rgba(255,176,32,.25);border-top-color:var(--amber);
+  animation:spin .7s linear infinite;
+}
+
+/* ── modal ── */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:1.5rem;
+}
+.modal{
+  background:var(--surface);border-radius:var(--r);
+  padding:2rem;text-align:center;width:100%;max-width:320px;
+}
+.modal h3{font-size:1rem;margin-bottom:1.25rem;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div style="color:var(--muted);padding:3rem;text-align:center">Wird geladen…</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ═══ Config helpers ═══════════════════════════════════════════════════════════
+
+function getConfig() {
+  const h = location.hash.slice(1);
+  if (!h) return null;
+  try { return JSON.parse(atob(h)); } catch { return null; }
+}
+
+// ═══ GitHub API ═══════════════════════════════════════════════════════════════
+
+async function ghGet(cfg, path) {
+  const r = await fetch(
+    `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`,
+    { headers: { Authorization: `Bearer ${cfg.token}`, 'X-GitHub-Api-Version': '2022-11-28' } }
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function ghPut(cfg, filename, b64, sha) {
+  const body = { message: `Upload: ${filename}`, content: b64 };
+  if (sha) body.sha = sha;
+  const r = await fetch(
+    `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(filename)}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${cfg.token}`,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || r.statusText); }
+  return r.json();
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const rd = new FileReader();
+    rd.onload = () => res(rd.result.split(',')[1]);
+    rd.onerror = rej;
+    rd.readAsDataURL(file);
+  });
+}
+
+// ═══ QR helpers ═══════════════════════════════════════════════════════════════
+
+function makeQR(el, url) {
+  el.innerHTML = '';
+  new QRCode(el, { text: url, width: 224, height: 224,
+    colorDark: '#000000', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H });
+}
+
+function downloadQR(container, name) {
+  const canvas = container.querySelector('canvas');
+  const img    = container.querySelector('img');
+  const a = document.createElement('a');
+  a.download = name.replace(/\.mp3$/i, '') + '-qrcode.png';
+  a.href = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+  a.click();
+}
+
+// ═══ SETUP SCREEN ══════════════════════════════════════════════════════════════
+
+function renderSetup() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // Header
+  const hdr = el('div', 'hdr', `<div class="hdr-icon">🎵</div>`);
+  const hdrText = el('div');
+  hdrText.innerHTML = '<h1>Einrichtung</h1><p>Einmalig konfigurieren — dann Link teilen</p>';
+  hdr.appendChild(hdrText);
+  app.appendChild(hdr);
+
+  // How-it-works note
+  const info = el('div', 'card', `
+    <p style="font-size:.85rem;color:var(--muted);line-height:1.65">
+      Du gibst hier einmalig deinen GitHub-Zugang ein.
+      Du erhältst dann einen <strong style="color:var(--ink)">Freunde-Link</strong> —
+      wer diesen Link hat, kann direkt MP3s hochladen und bekommt sofort den QR-Code.
+      Der Link enthält deinen Token verschlüsselt; schick ihn nur an Personen denen du vertraust.
+    </p>
+  `);
+  app.appendChild(info);
+
+  // Form card
+  const card = el('div', 'card');
+
+  // Token
+  card.appendChild(makeField('GitHub Personal Access Token', 'token', 'password', 'ghp_xxxxxxxxxxxx', `
+    Erstelle einen Token auf
+    <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com → Settings → Fine-grained tokens</a>.
+    Berechtigung: <strong style="color:var(--ink)">Contents: Read and write</strong> — nur für dein audio-qr Repository.
+  `));
+
+  // Owner
+  card.appendChild(makeField('Dein GitHub Benutzername', 'owner', 'text', 'maxmustermann'));
+
+  // Repo
+  const repoF = makeField('Repository-Name', 'repo', 'text', 'audio-qr');
+  repoF.querySelector('input').value = 'audio-qr';
+  card.appendChild(repoF);
+
+  // Base URL
+  card.appendChild(makeField('GitHub Pages URL', 'baseUrl', 'text', 'https://deinname.github.io/audio-qr'));
+
+  // PIN
+  card.appendChild(makeField('PIN für Freunde (optional)', 'pin', 'number', '4 Stellen, z. B. 1234', 'Nur Personen mit diesem PIN können hochladen. Leer lassen = kein Schutz.'));
+
+  // Auto-fill URL on input
+  ['owner','repo'].forEach(id => {
+    card.querySelector(`#f-${id}`).addEventListener('input', () => {
+      const o = card.querySelector('#f-owner').value.trim();
+      const r = card.querySelector('#f-repo').value.trim() || 'audio-qr';
+      if (o) card.querySelector('#f-baseUrl').value = `https://${o}.github.io/${r}`;
+    });
+  });
+
+  const genBtn = el('button', 'btn btn-primary btn-full');
+  genBtn.style.marginTop = '.25rem';
+  genBtn.textContent = 'Freunde-Link generieren';
+  genBtn.addEventListener('click', () => {
+    const token   = card.querySelector('#f-token').value.trim();
+    const owner   = card.querySelector('#f-owner').value.trim();
+    const repo    = card.querySelector('#f-repo').value.trim() || 'audio-qr';
+    const baseUrl = card.querySelector('#f-baseUrl').value.trim().replace(/\/$/, '');
+    const pin     = card.querySelector('#f-pin').value.trim();
+
+    if (!token || !owner || !baseUrl) {
+      alert('Bitte Token, Benutzername und GitHub Pages URL ausfüllen.');
+      return;
+    }
+
+    const cfg = { token, owner, repo, baseUrl };
+    if (pin && /^\d{4}$/.test(pin)) cfg.pin = pin;
+
+    const shareUrl = location.href.split('#')[0] + '#' + btoa(JSON.stringify(cfg));
+
+    // Show result
+    let resultBox = document.getElementById('result-box');
+    if (!resultBox) {
+      resultBox = el('div', 'card');
+      resultBox.id = 'result-box';
+      app.appendChild(resultBox);
+    }
+    resultBox.innerHTML = '';
+
+    resultBox.appendChild(el('p', '', '<strong>✅ Dein Freunde-Link ist fertig:</strong>'));
+    const urlBox = el('div', 'url-box');
+    urlBox.textContent = shareUrl;
+    resultBox.appendChild(urlBox);
+
+    const copyBtn = el('button', 'btn btn-ghost btn-full');
+    copyBtn.textContent = '📋 Link kopieren';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => { copyBtn.textContent = '✅ Kopiert!'; setTimeout(() => copyBtn.textContent = '📋 Link kopieren', 2000); })
+        .catch(() => prompt('Zum Kopieren markieren:', shareUrl));
+    });
+    resultBox.appendChild(copyBtn);
+
+    const note = el('p', '', 'Schick diesen Link an deine Freunde. Sie können sofort hochladen — kein Account nötig.');
+    note.style.cssText = 'font-size:.78rem;color:var(--muted);margin-top:.75rem;line-height:1.5';
+    resultBox.appendChild(note);
+
+    resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  card.appendChild(genBtn);
+  app.appendChild(card);
+}
+
+function makeField(label, id, type, placeholder, hintHtml) {
+  const wrap = el('div', 'field');
+  const lbl = el('label');
+  lbl.textContent = label;
+  lbl.setAttribute('for', `f-${id}`);
+  const inp = el('input');
+  inp.type = type;
+  inp.id = `f-${id}`;
+  inp.placeholder = placeholder;
+  inp.autocomplete = 'off';
+  if (type === 'number') { inp.min = 1000; inp.max = 9999; }
+  wrap.append(lbl, inp);
+  if (hintHtml) {
+    const hint = el('div', 'hint');
+    hint.innerHTML = hintHtml;
+    wrap.appendChild(hint);
+  }
+  return wrap;
+}
+
+// ═══ PIN SCREEN ════════════════════════════════════════════════════════════════
+
+function renderPin(cfg) {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  const screen = el('div', 'pin-screen');
+  screen.innerHTML = `
+    <div style="font-size:2.5rem">🔒</div>
+    <h2>PIN eingeben</h2>
+    <p>Gib den PIN ein, um Audios hochzuladen.</p>
+  `;
+
+  const inp = el('input');
+  inp.type = 'number';
+  inp.className = 'field';
+  inp.style.cssText = 'text-align:center;font-size:2.2rem;letter-spacing:.5em;width:10rem;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;color:var(--ink);padding:.5rem .75rem;outline:none;font-family:inherit;transition:border-color .15s';
+  inp.placeholder = '····';
+  inp.addEventListener('focus', () => inp.style.borderColor = 'var(--amber)');
+  inp.addEventListener('blur',  () => inp.style.borderColor = 'var(--border)');
+
+  const errMsg = el('div', '', '');
+  errMsg.style.cssText = 'color:var(--red);font-size:.85rem;min-height:1.2em';
+
+  const btn = el('button', 'btn btn-primary');
+  btn.textContent = 'Weiter →';
+
+  const check = () => {
+    if (inp.value === String(cfg.pin)) {
+      renderUpload(cfg);
+    } else {
+      errMsg.textContent = 'Falscher PIN — bitte nochmal.';
+      inp.style.borderColor = 'var(--red)';
+      inp.value = '';
+      setTimeout(() => inp.style.borderColor = 'var(--border)', 1500);
+    }
+  };
+
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+  btn.addEventListener('click', check);
+
+  screen.append(inp, errMsg, btn);
+  app.appendChild(screen);
+  setTimeout(() => inp.focus(), 100);
+}
+
+// ═══ UPLOAD SCREEN ═════════════════════════════════════════════════════════════
+
+function renderUpload(cfg) {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // Header
+  const hdr = el('div', 'hdr');
+  hdr.innerHTML = `<div class="hdr-icon">🎵</div>`;
+  const hdrText = el('div');
+  hdrText.innerHTML = '<h1>Audio hochladen</h1><p>MP3 ablegen → sofort QR-Code erhalten</p>';
+  hdr.appendChild(hdrText);
+  app.appendChild(hdr);
+
+  // Drop zone
+  const zone = el('div', 'zone');
+  zone.id = 'dropzone';
+  zone.innerHTML = `
+    <input type="file" id="file-input" accept=".mp3,audio/mpeg" multiple>
+    <div class="z-icon">🎵</div>
+    <div class="z-label">MP3 hier ablegen oder <strong>auswählen</strong></div>
+    <div class="z-hint">Nur .mp3 · Max. 25 MB pro Datei</div>
+  `;
+  app.appendChild(zone);
+
+  // Status + QR area
+  const statusArea = el('div'); statusArea.id = 'status-area';
+  const qrArea     = el('div'); qrArea.id     = 'qr-area';
+  app.appendChild(statusArea);
+  app.appendChild(qrArea);
+
+  // File list
+  const secTitle = el('div', 'sec'); secTitle.textContent = 'Bereits hochgeladene Dateien';
+  const fileList  = el('div'); fileList.id = 'file-list';
+  app.appendChild(secTitle);
+  app.appendChild(fileList);
+
+  // ── Drag & drop wiring ──
+  const fileInput = document.getElementById('file-input');
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('over');
+    handleFiles(cfg, Array.from(e.dataTransfer.files));
+  });
+  fileInput.addEventListener('change', () => {
+    handleFiles(cfg, Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+
+  loadFileList(cfg);
+}
+
+// ── Upload logic ──
+
+async function handleFiles(cfg, files) {
+  for (const f of files) await uploadOne(cfg, f);
+}
+
+async function uploadOne(cfg, file) {
+  const statusArea = document.getElementById('status-area');
+  const qrArea     = document.getElementById('qr-area');
+
+  if (!file.name.toLowerCase().endsWith('.mp3')) {
+    showStatus(statusArea, 'err', `Nur MP3-Dateien erlaubt — „${file.name}" übersprungen.`);
+    return;
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    showStatus(statusArea, 'err', `Datei zu groß (max. 25 MB) — „${file.name}" übersprungen.`);
+    return;
+  }
+
+  qrArea.innerHTML = '';
+  showStatus(statusArea, 'uploading', file.name);
+
+  // Progress fake-ticker
+  let pct = 5;
+  const progBar = document.getElementById('prog-bar');
+  const ticker = setInterval(() => {
+    pct = Math.min(pct + 2, 72);
+    const b = document.getElementById('prog-bar');
+    if (b) b.style.width = pct + '%';
+  }, 80);
+
+  try {
+    const b64 = await toBase64(file);
+    let sha;
+    try {
+      const existing = await ghGet(cfg, encodeURIComponent(file.name));
+      sha = existing.sha;
+    } catch { /* new file */ }
+
+    const b = document.getElementById('prog-bar');
+    if (b) b.style.width = '85%';
+
+    await ghPut(cfg, file.name, b64, sha);
+
+    clearInterval(ticker);
+    const b2 = document.getElementById('prog-bar');
+    if (b2) b2.style.width = '100%';
+
+    setTimeout(() => {
+      showStatus(statusArea, 'ok', `„${file.name}" hochgeladen.`);
+      showQR(cfg, qrArea, file.name);
+      loadFileList(cfg);
+    }, 350);
+
+  } catch (err) {
+    clearInterval(ticker);
+    showStatus(statusArea, 'err', `Fehler: ${err.message}`);
+  }
+}
+
+function showStatus(area, type, msg) {
+  area.innerHTML = '';
+  const div = el('div', `status status-${type}`);
+  if (type === 'uploading') {
+    div.innerHTML = `<span class="spin"></span>`;
+    const txt = el('div');
+    txt.innerHTML = `Lade hoch: <strong>${msg}</strong>`;
+    div.appendChild(txt);
+    area.appendChild(div);
+    const pw = el('div', 'prog-wrap');
+    const pb = el('div', 'prog-bar'); pb.id = 'prog-bar';
+    pw.appendChild(pb); area.appendChild(pw);
+  } else {
+    div.textContent = (type === 'ok' ? '✅ ' : '❌ ') + msg;
+    area.appendChild(div);
+  }
+}
+
+function showQR(cfg, area, filename) {
+  const url = `${cfg.baseUrl}/play.html?a=${encodeURIComponent(filename)}`;
+
+  const card = el('div', 'qr-card');
+  const nameEl = el('div', 'qr-name'); nameEl.textContent = '🎵 ' + filename;
+  const qrBox  = el('div', 'qr-box'); qrBox.id = 'main-qr';
+  const urlEl  = el('div', 'qr-url'); urlEl.textContent = url;
+  const btns   = el('div', 'qr-btns');
+
+  const dlBtn = el('button', 'btn btn-primary');
+  dlBtn.textContent = '⬇ QR-Code speichern';
+  dlBtn.addEventListener('click', () => downloadQR(qrBox, filename));
+
+  const cpBtn = el('button', 'btn btn-ghost');
+  cpBtn.textContent = '📋 Link kopieren';
+  cpBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(url)
+      .then(() => { cpBtn.textContent = '✅ Kopiert!'; setTimeout(() => cpBtn.textContent = '📋 Link kopieren', 2000); })
+      .catch(() => prompt('Link:', url));
+  });
+
+  btns.append(dlBtn, cpBtn);
+  card.append(nameEl, qrBox, urlEl, btns);
+  area.appendChild(card);
+
+  setTimeout(() => makeQR(qrBox, url), 80);
+}
+
+// ── File list ──
+
+async function loadFileList(cfg) {
+  const listEl = document.getElementById('file-list');
+  if (!listEl) return;
+  listEl.innerHTML = `<div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Wird geladen…</div>`;
+
+  try {
+    const files = await ghGet(cfg, '');
+    const mp3s  = Array.isArray(files) ? files.filter(f => f.name.toLowerCase().endsWith('.mp3')) : [];
+
+    if (mp3s.length === 0) {
+      listEl.innerHTML = `<div style="color:var(--muted);font-size:.82rem">Noch keine Dateien vorhanden.</div>`;
+      return;
+    }
+
+    const list = el('div', 'flist');
+    mp3s.forEach(f => {
+      const url  = `${cfg.baseUrl}/play.html?a=${encodeURIComponent(f.name)}`;
+      const item = el('div', 'fitem');
+
+      const name = el('span', 'fname'); name.textContent = f.name;
+
+      const qrBtn = el('button', 'btn btn-primary fbtn');
+      qrBtn.textContent = 'QR';
+      qrBtn.addEventListener('click', () => openModal(url, f.name));
+
+      const linkBtn = el('button', 'btn btn-ghost fbtn');
+      linkBtn.textContent = 'Link';
+      linkBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(url)
+          .then(() => { linkBtn.textContent = '✅'; setTimeout(() => linkBtn.textContent = 'Link', 1800); })
+          .catch(() => prompt('Link:', url));
+      });
+
+      item.append(name, qrBtn, linkBtn);
+      list.appendChild(item);
+    });
+
+    listEl.innerHTML = '';
+    listEl.appendChild(list);
+
+  } catch (e) {
+    listEl.innerHTML = `<div style="color:var(--red);font-size:.82rem">Konnte Dateien nicht laden: ${e.message}</div>`;
+  }
+}
+
+function openModal(url, filename) {
+  const bg = el('div', 'modal-bg');
+  const modal = el('div', 'modal');
+
+  const title = el('h3'); title.textContent = '🎵 ' + filename;
+  const qrBox = el('div', 'qr-box'); qrBox.style.marginBottom = '1.25rem';
+
+  const urlEl = el('div', 'qr-url'); urlEl.textContent = url;
+  urlEl.style.marginBottom = '1.25rem';
+
+  const btns = el('div', 'qr-btns');
+
+  const dlBtn = el('button', 'btn btn-primary');
+  dlBtn.textContent = '⬇ Speichern';
+  dlBtn.addEventListener('click', () => downloadQR(qrBox, filename));
+
+  const closeBtn = el('button', 'btn btn-ghost');
+  closeBtn.textContent = 'Schließen';
+  closeBtn.addEventListener('click', () => bg.remove());
+
+  btns.append(dlBtn, closeBtn);
+  modal.append(title, qrBox, urlEl, btns);
+  bg.appendChild(modal);
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
+
+  setTimeout(() => makeQR(qrBox, url), 80);
+}
+
+// ═══ Tiny DOM helper ══════════════════════════════════════════════════════════
+
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls)  e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+// ═══ Router ═══════════════════════════════════════════════════════════════════
+
+(function init() {
+  const cfg = getConfig();
+  if (!cfg) { renderSetup(); return; }
+  if (cfg.pin) { renderPin(cfg); return; }
+  renderUpload(cfg);
+})();
+</script>
+</body>
+</html>
